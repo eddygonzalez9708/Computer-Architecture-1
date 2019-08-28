@@ -5,7 +5,11 @@ import sys
 HLT = 0b00000001 
 LDI = 0b10000010
 MUL = 0b10100010 
+POP = 0b01000110
 PRN = 0b01000111
+PUSH = 0b01000101
+
+SP = 7
 
 class CPU:
   """Main CPU class."""
@@ -15,6 +19,7 @@ class CPU:
     self.ram = [0] * 256
     self.reg = [0] * 8
     self.pc = 0
+    self.reg[SP] = 0xF3
 
     self.hlt = False
     self.inst_set_pc = False
@@ -23,7 +28,9 @@ class CPU:
       HLT: self.op_hlt,
       LDI: self.op_ldi,
       MUL: self.op_mul,
-      PRN: self.op_prn
+      POP: self.op_pop,
+      PRN: self.op_prn,
+      PUSH: self.op_push
     }
   
   def load(self, filename):
@@ -58,7 +65,7 @@ class CPU:
         first_bit = instruction[0]
         
         if first_bit == '0' or first_bit == '1':
-          self.ram[address] = int(instruction[:8], 2)
+          self.ram_write(address, int(instruction[:8], 2))
           address += 1
 
   def alu(self, op, reg_a, reg_b):
@@ -73,7 +80,8 @@ class CPU:
 
   def trace(self):
     """
-    Handy function to print out the CPU state. You might want to call this
+    Handy function to print out the CPU state.
+    You might want to call this
     from run() if you need help debugging.
     """
 
@@ -106,7 +114,7 @@ class CPU:
     
     while not self.hlt:
       # Next Instruction
-      ir = self.ram[self.pc]
+      ir = self.ram_read(self.pc)
 
       # Operands
       operand_a = self.ram_read(self.pc + 1)
@@ -147,5 +155,16 @@ class CPU:
   def op_mul(self, operand_a, operand_b):
     self.alu('MUL', operand_a, operand_b)
   
+  def op_pop(self, addr, operand_b):
+    value = self.ram_read(self.reg[SP])
+    self.ram_write(self.reg[SP], 0)
+    self.reg[addr] = value
+    self.reg[SP] += 1
+   
   def op_prn(self, addr, operand_b):
     print(self.reg[addr])
+  
+  def op_push(self, addr, operand_b):
+    self.reg[SP] -= 1
+    value = self.reg[addr]
+    self.ram_write(self.reg[SP], value)
