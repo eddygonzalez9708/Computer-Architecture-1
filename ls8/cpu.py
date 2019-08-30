@@ -2,12 +2,15 @@
 
 import sys
 
+ADD = 0b10100000
+CALL = 0b01010000
 HLT = 0b00000001 
 LDI = 0b10000010
 MUL = 0b10100010 
 POP = 0b01000110
 PRN = 0b01000111
 PUSH = 0b01000101
+RET = 0b00010001
 
 SP = 7
 
@@ -23,14 +26,18 @@ class CPU:
 
     self.hlt = False
     self.inst_set_pc = False
+    self.prev = None
 
     self.ins = {
+      ADD: self.op_add,
+      CALL: self.op_call,
       HLT: self.op_hlt,
       LDI: self.op_ldi,
       MUL: self.op_mul,
       POP: self.op_pop,
       PRN: self.op_prn,
-      PUSH: self.op_push
+      PUSH: self.op_push,
+      RET: self.op_ret
     }
   
   def load(self, filename):
@@ -140,11 +147,18 @@ class CPU:
       if ir in self.ins:
         self.ins[ir](operand_a, operand_b)
       else:
-        raise Exception(f'Invalid instruction {hex(ir)} at address {hex(self.pc)}')
+        raise Exception(f'Invalid instruction {hex(ir)} at address {self.pc}')
 
       # If the instruction didn't set the PC, just move to the next instruction
       if not self.inst_set_pc:
         self.pc += inst_size + 1
+  
+  def op_add(self, operand_a, operand_b):
+    self.alu('ADD', operand_a, operand_b)
+  
+  def op_call(self, addr, operand_b):
+    self.prev = self.pc + 2
+    self.pc = self.reg[addr]
 
   def op_hlt(self, operand_a, operand_b):
     self.hlt = True
@@ -168,3 +182,7 @@ class CPU:
     self.reg[SP] -= 1
     value = self.reg[addr]
     self.ram_write(self.reg[SP], value)
+  
+  def op_ret(self, operand_a, operand_b):
+    self.pc = self.prev
+    self.prev = None
